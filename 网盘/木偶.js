@@ -1,0 +1,2157 @@
+// @name 玩偶系模板
+// 引入 OmniBox SDK
+const OmniBox = require("omnibox_sdk");
+
+// 引入 cheerio（用于 HTML 解析）
+// 注意：cheerio 需要在全局 node_modules 中安装
+// 安装方法：在项目根目录执行 npm install cheerio（会安装到 data/spiders/node_modules）
+// 或者通过环境变量 NODE_PATH 指定包含 cheerio 的目录
+let cheerio;
+try {
+  cheerio = require("cheerio");
+} catch (error) {
+  throw new Error("cheerio 模块未找到，请先安装：npm install cheerio");
+}
+
+// ==================== 配置区域 ====================
+// 网站地址（可以通过环境变量配置）
+const WEB_SITE = process.env.WEB_SITE_MUOU || "";
+
+/**
+ * 筛选配置
+ */
+const FILTERS = {
+  "25" : [ 
+    {
+      "key": "area",
+      "name": "地区",
+      "init": "",
+      "value": [
+        {"name": "全部地区", "value": ""},
+        {"name": "中国大陆", "value": "中国大陆"},
+        {"name": "大陆", "value": "大陆"},
+        {"name": "美国", "value": "美国"},
+        {"name": "香港", "value": "香港"},
+        {"name": "韩国", "value": "韩国"},
+        {"name": "英国", "value": "英国"},
+        {"name": "台湾", "value": "台湾"},
+        {"name": "日本", "value": "日本"},
+        {"name": "法国", "value": "法国"},
+        {"name": "意大利", "value": "意大利"},
+        {"name": "德国", "value": "德国"},
+        {"name": "西班牙", "value": "西班牙"},
+        {"name": "泰国", "value": "泰国"},
+        {"name": "其它", "value": "其它"}
+      ]
+    },
+    {
+      "key": "lang",
+      "name": "语言",
+      "init": "",
+      "value": [
+        {"name": "全部语言", "value": ""},
+        {"name": "国语", "value": "国语"},
+        {"name": "英语", "value": "英语"},
+        {"name": "粤语", "value": "粤语"},
+        {"name": "闽南语", "value": "闽南语"},
+        {"name": "韩语", "value": "韩语"},
+        {"name": "日语", "value": "日语"},
+        {"name": "法语", "value": "法语"},
+        {"name": "德语", "value": "德语"},
+        {"name": "其它", "value": "其它"}
+      ]
+    },{
+    "key" : "year",
+    "name" : "时间",
+    "init" : "",
+    "value" : [ {
+      "name" : "全部时间",
+      "value": ""
+    }, {
+      "name" : "2026",
+      "value": "2026"
+    }, {
+      "name" : "2025",
+      "value": "2025"
+    }, {
+      "name" : "2024",
+      "value": "2024"
+    }, {
+      "name" : "2023",
+      "value": "2023"
+    }, {
+      "name" : "2022",
+      "value": "2022"
+    }, {
+      "name" : "2021",
+      "value": "2021"
+    }, {
+      "name" : "2020",
+      "value": "2020"
+    }, {
+      "name" : "2019",
+      "value": "2019"
+    }, {
+      "name" : "2018",
+      "value": "2018"
+    }, {
+      "name" : "2017",
+      "value": "2017"
+    }, {
+      "name" : "2016",
+      "value": "2016"
+    }, {
+      "name" : "2015",
+      "value": "2015"
+    }, {
+      "name" : "2014",
+      "value": "2014"
+    }, {
+      "name" : "2013",
+      "value": "2013"
+    }, {
+      "name" : "2012",
+      "value": "2012"
+    }, {
+      "name" : "2011",
+      "value": "2011"
+    }, {
+      "name" : "2010",
+      "value": "2010"
+    } ]
+  }, {
+    "key" : "letter",
+    "name" : "字母",
+    "init" : "",
+    "value" : [ {
+      "name" : "全部字母",
+      "value": ""
+    }, {
+      "name" : "A",
+      "value": "A"
+    }, {
+      "name" : "B",
+      "value": "B"
+    }, {
+      "name" : "C",
+      "value": "C"
+    }, {
+      "name" : "D",
+      "value": "D"
+    }, {
+      "name" : "E",
+      "value": "E"
+    }, {
+      "name" : "F",
+      "value": "F"
+    }, {
+      "name" : "G",
+      "value": "G"
+    }, {
+      "name" : "H",
+      "value": "H"
+    }, {
+      "name" : "I",
+      "value": "I"
+    }, {
+      "name" : "J",
+      "value": "J"
+    }, {
+      "name" : "K",
+      "value": "K"
+    }, {
+      "name" : "L",
+      "value": "L"
+    }, {
+      "name" : "M",
+      "value": "M"
+    }, {
+      "name" : "N",
+      "value": "N"
+    }, {
+      "name" : "O",
+      "value": "O"
+    }, {
+      "name" : "P",
+      "value": "P"
+    }, {
+      "name" : "Q",
+      "value": "Q"
+    }, {
+      "name" : "R",
+      "value": "R"
+    }, {
+      "name" : "S",
+      "value": "S"
+    }, {
+      "name" : "T",
+      "value": "T"
+    }, {
+      "name" : "U",
+      "value": "U"
+    }, {
+      "name" : "V",
+      "value": "V"
+    }, {
+      "name" : "W",
+      "value": "W"
+    }, {
+      "name" : "X",
+      "value": "X"
+    }, {
+      "name" : "Y",
+      "value": "Y"
+    }, {
+      "name" : "Z",
+      "value": "Z"
+    }, {
+      "name" : "0-9",
+      "value": "0-9"
+    } ]
+  }, {
+    "key" : "sort",
+    "name" : "排序",
+    "init" : "",
+    "value" : [ {
+      "name" : "默认排序",
+      "value": ""
+    }, {
+      "name" : "人气",
+      "value": "hits"
+    }, {
+      "name" : "评分",
+      "value": "score"
+    } ]
+  } ],
+  "1" : [ {
+    "key" : "class",
+    "name" : "剧情",
+    "init" : "",
+    "value" : [ {
+      "name" : "全部剧情",
+      "value": ""
+    }, {
+      "name" : "喜剧",
+      "value": "喜剧"
+    }, {
+      "name" : "爱情",
+      "value": "爱情"
+    }, {
+      "name" : "恐怖",
+      "value": "恐怖"
+    }, {
+      "name" : "动作",
+      "value": "动作"
+    }, {
+      "name" : "科幻",
+      "value": "科幻"
+    }, {
+      "name" : "剧情",
+      "value": "剧情"
+    }, {
+      "name" : "战争",
+      "value": "战争"
+    }, {
+      "name" : "警匪",
+      "value": "警匪"
+    }, {
+      "name" : "犯罪",
+      "value": "犯罪"
+    }, {
+      "name" : "动画",
+      "value": "动画"
+    }, {
+      "name" : "奇幻",
+      "value": "奇幻"
+    }, {
+      "name" : "武侠",
+      "value": "武侠"
+    }, {
+      "name" : "冒险",
+      "value": "冒险"
+    }, {
+      "name" : "枪战",
+      "value": "枪战"
+    }, {
+      "name" : "恐怖",
+      "value": "恐怖"
+    }, {
+      "name" : "悬疑",
+      "value": "悬疑"
+    }, {
+      "name" : "惊悚",
+      "value": "惊悚"
+    }, {
+      "name" : "经典",
+      "value": "经典"
+    }, {
+      "name" : "青春",
+      "value": "青春"
+    }, {
+      "name" : "文艺",
+      "value": "文艺"
+    }, {
+      "name" : "微电影",
+      "value": "微电影"
+    }, {
+      "name" : "古装",
+      "value": "古装"
+    }, {
+      "name" : "历史",
+      "value": "历史"
+    }, {
+      "name" : "运动",
+      "value": "运动"
+    }, {
+      "name" : "农村",
+      "value": "农村"
+    }, {
+      "name" : "儿童",
+      "value": "儿童"
+    }, {
+      "name" : "网络电影",
+      "value": "网络电影"
+    } ]
+  }, {
+    "key" : "area",
+    "name" : "地区",
+    "init" : "",
+    "value" : [ {
+      "name" : "全部地区",
+      "value": ""
+    }, {
+      "name" : "大陆",
+      "value": "大陆"
+    }, {
+      "name" : "香港",
+      "value": "香港"
+    }, {
+      "name" : "台湾",
+      "value": "台湾"
+    }, {
+      "name" : "美国",
+      "value": "美国"
+    }, {
+      "name" : "法国",
+      "value": "法国"
+    }, {
+      "name" : "英国",
+      "value": "英国"
+    }, {
+      "name" : "日本",
+      "value": "日本"
+    }, {
+      "name" : "韩国",
+      "value": "韩国"
+    }, {
+      "name" : "德国",
+      "value": "德国"
+    }, {
+      "name" : "泰国",
+      "value": "泰国"
+    }, {
+      "name" : "印度",
+      "value": "印度"
+    }, {
+      "name" : "意大利",
+      "value": "意大利"
+    }, {
+      "name" : "西班牙",
+      "value": "西班牙"
+    }, {
+      "name" : "加拿大",
+      "value": "加拿大"
+    }, {
+      "name" : "其他",
+      "value": "其他"
+    } ]
+  }, {
+    "key" : "lang",
+    "name" : "语言",
+    "init" : "",
+    "value" : [ {
+      "name" : "全部语言",
+      "value": ""
+    }, {
+      "name" : "国语",
+      "value": "国语"
+    }, {
+      "name" : "英语",
+      "value": "英语"
+    }, {
+      "name" : "粤语",
+      "value": "粤语"
+    }, {
+      "name" : "闽南语",
+      "value": "闽南语"
+    }, {
+      "name" : "韩语",
+      "value": "韩语"
+    }, {
+      "name" : "日语",
+      "value": "日语"
+    }, {
+      "name" : "法语",
+      "value": "法语"
+    }, {
+      "name" : "德语",
+      "value": "德语"
+    }, {
+      "name" : "其它",
+      "value": "其它"
+    } ]
+  }, {
+    "key" : "year",
+    "name" : "时间",
+    "init" : "",
+    "value" : [ {
+      "name" : "全部时间",
+      "value": ""
+    }, {
+      "name" : "2026",
+      "value": "2026"
+    }, {
+      "name" : "2025",
+      "value": "2025"
+    }, {
+      "name" : "2024",
+      "value": "2024"
+    }, {
+      "name" : "2023",
+      "value": "2023"
+    }, {
+      "name" : "2022",
+      "value": "2022"
+    }, {
+      "name" : "2021",
+      "value": "2021"
+    }, {
+      "name" : "2020",
+      "value": "2020"
+    }, {
+      "name" : "2019",
+      "value": "2019"
+    }, {
+      "name" : "2018",
+      "value": "2018"
+    }, {
+      "name" : "2017",
+      "value": "2017"
+    }, {
+      "name" : "2016",
+      "value": "2016"
+    }, {
+      "name" : "2015",
+      "value": "2015"
+    }, {
+      "name" : "2014",
+      "value": "2014"
+    }, {
+      "name" : "2013",
+      "value": "2013"
+    }, {
+      "name" : "2012",
+      "value": "2012"
+    }, {
+      "name" : "2011",
+      "value": "2011"
+    }, {
+      "name" : "2010",
+      "value": "2010"
+    } ]
+  }, {
+    "key" : "letter",
+    "name" : "字母",
+    "init" : "",
+    "value" : [ {
+      "name" : "全部字母",
+      "value": ""
+    }, {
+      "name" : "A",
+      "value": "A"
+    }, {
+      "name" : "B",
+      "value": "B"
+    }, {
+      "name" : "C",
+      "value": "C"
+    }, {
+      "name" : "D",
+      "value": "D"
+    }, {
+      "name" : "E",
+      "value": "E"
+    }, {
+      "name" : "F",
+      "value": "F"
+    }, {
+      "name" : "G",
+      "value": "G"
+    }, {
+      "name" : "H",
+      "value": "H"
+    }, {
+      "name" : "I",
+      "value": "I"
+    }, {
+      "name" : "J",
+      "value": "J"
+    }, {
+      "name" : "K",
+      "value": "K"
+    }, {
+      "name" : "L",
+      "value": "L"
+    }, {
+      "name" : "M",
+      "value": "M"
+    }, {
+      "name" : "N",
+      "value": "N"
+    }, {
+      "name" : "O",
+      "value": "O"
+    }, {
+      "name" : "P",
+      "value": "P"
+    }, {
+      "name" : "Q",
+      "value": "Q"
+    }, {
+      "name" : "R",
+      "value": "R"
+    }, {
+      "name" : "S",
+      "value": "S"
+    }, {
+      "name" : "T",
+      "value": "T"
+    }, {
+      "name" : "U",
+      "value": "U"
+    }, {
+      "name" : "V",
+      "value": "V"
+    }, {
+      "name" : "W",
+      "value": "W"
+    }, {
+      "name" : "X",
+      "value": "X"
+    }, {
+      "name" : "Y",
+      "value": "Y"
+    }, {
+      "name" : "Z",
+      "value": "Z"
+    }, {
+      "name" : "0-9",
+      "value": "0-9"
+    } ]
+  }, {
+    "key" : "sort",
+    "name" : "排序",
+    "init" : "",
+    "value" : [ {
+      "name" : "默认排序",
+      "value": ""
+    }, {
+      "name" : "人气",
+      "value": "hits"
+    }, {
+      "name" : "评分",
+      "value": "score"
+    } ]
+  } ],
+  "2" : [ {
+    "key" : "tid",
+    "name" : "类型",
+    "init" : "",
+    "value" : [ {
+      "name" : "全部类型",
+      "value": ""
+    }, {
+      "name" : "国产剧",
+      "value": "13"
+    }, {
+      "name" : "欧美剧",
+      "value": "14"
+    }, {
+      "name" : "日韩剧",
+      "value": "15"
+    }, {
+      "name" : "港台剧",
+      "value": "16"
+    }, {
+      "name" : "泰剧",
+      "value": "23"
+    }, {
+      "name" : "其它剧",
+      "value": "26"
+    } ]
+  }, {
+    "key" : "class",
+    "name" : "剧情",
+    "init" : "",
+    "value" : [ {
+      "name" : "全部剧情",
+      "value": ""
+    }, {
+      "name" : "古装",
+      "value": "古装"
+    }, {
+      "name" : "战争",
+      "value": "战争"
+    }, {
+      "name" : "青春偶像",
+      "value": "青春偶像"
+    }, {
+      "name" : "喜剧",
+      "value": "喜剧"
+    }, {
+      "name" : "家庭",
+      "value": "家庭"
+    }, {
+      "name" : "犯罪",
+      "value": "犯罪"
+    }, {
+      "name" : "动作",
+      "value": "动作"
+    }, {
+      "name" : "奇幻",
+      "value": "奇幻"
+    }, {
+      "name" : "剧情",
+      "value": "剧情"
+    }, {
+      "name" : "历史",
+      "value": "历史"
+    }, {
+      "name" : "经典",
+      "value": "经典"
+    }, {
+      "name" : "乡村",
+      "value": "乡村"
+    }, {
+      "name" : "情景",
+      "value": "情景"
+    }, {
+      "name" : "商战",
+      "value": "商战"
+    }, {
+      "name" : "网剧",
+      "value": "网剧"
+    }, {
+      "name" : "其他",
+      "value": "其他"
+    } ]
+  }, {
+    "key" : "area",
+    "name" : "地区",
+    "init" : "",
+    "value" : [ {
+      "name" : "全部地区",
+      "value": ""
+    }, {
+      "name" : "中国大陆",
+      "value": "中国大陆"
+    }, {
+      "name" : "大陆",
+      "value": "大陆"
+    }, {
+      "name" : "内地",
+      "value": "内地"
+    }, {
+      "name" : "韩国",
+      "value": "韩国"
+    }, {
+      "name" : "香港",
+      "value": "香港"
+    }, {
+      "name" : "台湾",
+      "value": "台湾"
+    }, {
+      "name" : "日本",
+      "value": "日本"
+    }, {
+      "name" : "美国",
+      "value": "美国"
+    }, {
+      "name" : "泰国",
+      "value": "泰国"
+    }, {
+      "name" : "英国",
+      "value": "英国"
+    }, {
+      "name" : "新加坡",
+      "value": "新加坡"
+    }, {
+      "name" : "其他",
+      "value": "其他"
+    } ]
+  }, {
+    "key" : "lang",
+    "name" : "语言",
+    "init" : "",
+    "value" : [ {
+      "name" : "全部语言",
+      "value": ""
+    }, {
+      "name" : "国语",
+      "value": "国语"
+    }, {
+      "name" : "英语",
+      "value": "英语"
+    }, {
+      "name" : "粤语",
+      "value": "粤语"
+    }, {
+      "name" : "闽南语",
+      "value": "闽南语"
+    }, {
+      "name" : "韩语",
+      "value": "韩语"
+    }, {
+      "name" : "日语",
+      "value": "日语"
+    }, {
+      "name" : "其它",
+      "value": "其它"
+    } ]
+  }, {
+    "key" : "year",
+    "name" : "时间",
+    "init" : "",
+    "value" : [ {
+      "name" : "全部时间",
+      "value": ""
+    }, {
+      "name" : "2026",
+      "value": "2026"
+    }, {
+      "name" : "2025",
+      "value": "2025"
+    }, {
+      "name" : "2024",
+      "value": "2024"
+    }, {
+      "name" : "2023",
+      "value": "2023"
+    }, {
+      "name" : "2022",
+      "value": "2022"
+    }, {
+      "name" : "2021",
+      "value": "2021"
+    }, {
+      "name" : "2020",
+      "value": "2020"
+    }, {
+      "name" : "2019",
+      "value": "2019"
+    }, {
+      "name" : "2018",
+      "value": "2018"
+    }, {
+      "name" : "2017",
+      "value": "2017"
+    }, {
+      "name" : "2016",
+      "value": "2016"
+    }, {
+      "name" : "2015",
+      "value": "2015"
+    }, {
+      "name" : "2014",
+      "value": "2014"
+    }, {
+      "name" : "2013",
+      "value": "2013"
+    }, {
+      "name" : "2012",
+      "value": "2012"
+    }, {
+      "name" : "2011",
+      "value": "2011"
+    }, {
+      "name" : "2010",
+      "value": "2010"
+    } ]
+  }, {
+    "key" : "letter",
+    "name" : "字母",
+    "init" : "",
+    "value" : [ {
+      "name" : "全部字母",
+      "value": ""
+    }, {
+      "name" : "A",
+      "value": "A"
+    }, {
+      "name" : "B",
+      "value": "B"
+    }, {
+      "name" : "C",
+      "value": "C"
+    }, {
+      "name" : "D",
+      "value": "D"
+    }, {
+      "name" : "E",
+      "value": "E"
+    }, {
+      "name" : "F",
+      "value": "F"
+    }, {
+      "name" : "G",
+      "value": "G"
+    }, {
+      "name" : "H",
+      "value": "H"
+    }, {
+      "name" : "I",
+      "value": "I"
+    }, {
+      "name" : "J",
+      "value": "J"
+    }, {
+      "name" : "K",
+      "value": "K"
+    }, {
+      "name" : "L",
+      "value": "L"
+    }, {
+      "name" : "M",
+      "value": "M"
+    }, {
+      "name" : "N",
+      "value": "N"
+    }, {
+      "name" : "O",
+      "value": "O"
+    }, {
+      "name" : "P",
+      "value": "P"
+    }, {
+      "name" : "Q",
+      "value": "Q"
+    }, {
+      "name" : "R",
+      "value": "R"
+    }, {
+      "name" : "S",
+      "value": "S"
+    }, {
+      "name" : "T",
+      "value": "T"
+    }, {
+      "name" : "U",
+      "value": "U"
+    }, {
+      "name" : "V",
+      "value": "V"
+    }, {
+      "name" : "W",
+      "value": "W"
+    }, {
+      "name" : "X",
+      "value": "X"
+    }, {
+      "name" : "Y",
+      "value": "Y"
+    }, {
+      "name" : "Z",
+      "value": "Z"
+    }, {
+      "name" : "0-9",
+      "value": "0-9"
+    } ]
+  }, {
+    "key" : "sort",
+    "name" : "排序",
+    "init" : "",
+    "value" : [ {
+      "name" : "默认排序",
+      "value": ""
+    }, {
+      "name" : "人气",
+      "value": "hits"
+    }, {
+      "name" : "评分",
+      "value": "score"
+    } ]
+  } ],
+  "3" : [ {
+    "key" : "tid",
+    "name" : "类型",
+    "init" : "",
+    "value" : [ {
+      "name" : "全部类型",
+      "value": ""
+    }, {
+      "name" : "国产",
+      "value": "20"
+    }, {
+      "name" : "日本",
+      "value": "21"
+    }, {
+      "name" : "欧美",
+      "value": "22"
+    } ]
+  }, {
+    "key" : "year",
+    "name" : "时间",
+    "init" : "",
+    "value" : [ {
+      "name" : "全部时间",
+      "value": ""
+    }, {
+      "name" : "2026",
+      "value": "2026"
+    }, {
+      "name" : "2025",
+      "value": "2025"
+    }, {
+      "name" : "2024",
+      "value": "2024"
+    }, {
+      "name" : "2023",
+      "value": "2023"
+    }, {
+      "name" : "2022",
+      "value": "2022"
+    }, {
+      "name" : "2021",
+      "value": "2021"
+    }, {
+      "name" : "2020",
+      "value": "2020"
+    }, {
+      "name" : "2019",
+      "value": "2019"
+    }, {
+      "name" : "2018",
+      "value": "2018"
+    }, {
+      "name" : "2017",
+      "value": "2017"
+    }, {
+      "name" : "2016",
+      "value": "2016"
+    }, {
+      "name" : "2015",
+      "value": "2015"
+    }, {
+      "name" : "2014",
+      "value": "2014"
+    }, {
+      "name" : "2013",
+      "value": "2013"
+    }, {
+      "name" : "2012",
+      "value": "2012"
+    }, {
+      "name" : "2011",
+      "value": "2011"
+    }, {
+      "name" : "2010",
+      "value": "2010"
+    } ]
+  }, {
+    "key" : "letter",
+    "name" : "字母",
+    "init" : "",
+    "value" : [ {
+      "name" : "全部字母",
+      "value": ""
+    }, {
+      "name" : "A",
+      "value": "A"
+    }, {
+      "name" : "B",
+      "value": "B"
+    }, {
+      "name" : "C",
+      "value": "C"
+    }, {
+      "name" : "D",
+      "value": "D"
+    }, {
+      "name" : "E",
+      "value": "E"
+    }, {
+      "name" : "F",
+      "value": "F"
+    }, {
+      "name" : "G",
+      "value": "G"
+    }, {
+      "name" : "H",
+      "value": "H"
+    }, {
+      "name" : "I",
+      "value": "I"
+    }, {
+      "name" : "J",
+      "value": "J"
+    }, {
+      "name" : "K",
+      "value": "K"
+    }, {
+      "name" : "L",
+      "value": "L"
+    }, {
+      "name" : "M",
+      "value": "M"
+    }, {
+      "name" : "N",
+      "value": "N"
+    }, {
+      "name" : "O",
+      "value": "O"
+    }, {
+      "name" : "P",
+      "value": "P"
+    }, {
+      "name" : "Q",
+      "value": "Q"
+    }, {
+      "name" : "R",
+      "value": "R"
+    }, {
+      "name" : "S",
+      "value": "S"
+    }, {
+      "name" : "T",
+      "value": "T"
+    }, {
+      "name" : "U",
+      "value": "U"
+    }, {
+      "name" : "V",
+      "value": "V"
+    }, {
+      "name" : "W",
+      "value": "W"
+    }, {
+      "name" : "X",
+      "value": "X"
+    }, {
+      "name" : "Y",
+      "value": "Y"
+    }, {
+      "name" : "Z",
+      "value": "Z"
+    }, {
+      "name" : "0-9",
+      "value": "0-9"
+    } ]
+  }, {
+    "key" : "sort",
+    "name" : "排序",
+    "init" : "",
+    "value" : [ {
+      "name" : "默认排序",
+      "value": ""
+    }, {
+      "name" : "人气",
+      "value": "hits"
+    }, {
+      "name" : "评分",
+      "value": "score"
+    } ]
+  } ],
+  "29" : [ {
+    "key" : "letter",
+    "name" : "字母",
+    "init" : "",
+    "value" : [ {
+      "name" : "全部字母",
+      "value": ""
+    }, {
+      "name" : "A",
+      "value": "A"
+    }, {
+      "name" : "B",
+      "value": "B"
+    }, {
+      "name" : "C",
+      "value": "C"
+    }, {
+      "name" : "D",
+      "value": "D"
+    }, {
+      "name" : "E",
+      "value": "E"
+    }, {
+      "name" : "F",
+      "value": "F"
+    }, {
+      "name" : "G",
+      "value": "G"
+    }, {
+      "name" : "H",
+      "value": "H"
+    }, {
+      "name" : "I",
+      "value": "I"
+    }, {
+      "name" : "J",
+      "value": "J"
+    }, {
+      "name" : "K",
+      "value": "K"
+    }, {
+      "name" : "L",
+      "value": "L"
+    }, {
+      "name" : "M",
+      "value": "M"
+    }, {
+      "name" : "N",
+      "value": "N"
+    }, {
+      "name" : "O",
+      "value": "O"
+    }, {
+      "name" : "P",
+      "value": "P"
+    }, {
+      "name" : "Q",
+      "value": "Q"
+    }, {
+      "name" : "R",
+      "value": "R"
+    }, {
+      "name" : "S",
+      "value": "S"
+    }, {
+      "name" : "T",
+      "value": "T"
+    }, {
+      "name" : "U",
+      "value": "U"
+    }, {
+      "name" : "V",
+      "value": "V"
+    }, {
+      "name" : "W",
+      "value": "W"
+    }, {
+      "name" : "X",
+      "value": "X"
+    }, {
+      "name" : "Y",
+      "value": "Y"
+    }, {
+      "name" : "Z",
+      "value": "Z"
+    }, {
+      "name" : "0-9",
+      "value": "0-9"
+    } ]
+  }, {
+    "key" : "sort",
+    "name" : "排序",
+    "init" : "",
+    "value" : [ {
+      "name" : "默认排序",
+      "value": ""
+    }, {
+      "name" : "人气",
+      "value": "hits"
+    }, {
+      "name" : "评分",
+      "value": "score"
+    } ]
+  } ],
+  "4" : [ {
+    "key" : "year",
+    "name" : "时间",
+    "init" : "",
+    "value" : [ {
+      "name" : "全部时间",
+      "value": ""
+    }, {
+      "name" : "2026",
+      "value": "2026"
+    }, {
+      "name" : "2025",
+      "value": "2025"
+    }, {
+      "name" : "2024",
+      "value": "2024"
+    }, {
+      "name" : "2023",
+      "value": "2023"
+    }, {
+      "name" : "2022",
+      "value": "2022"
+    }, {
+      "name" : "2021",
+      "value": "2021"
+    }, {
+      "name" : "2020",
+      "value": "2020"
+    }, {
+      "name" : "2019",
+      "value": "2019"
+    }, {
+      "name" : "2018",
+      "value": "2018"
+    }, {
+      "name" : "2017",
+      "value": "2017"
+    }, {
+      "name" : "2016",
+      "value": "2016"
+    }, {
+      "name" : "2015",
+      "value": "2015"
+    }, {
+      "name" : "2014",
+      "value": "2014"
+    }, {
+      "name" : "2013",
+      "value": "2013"
+    }, {
+      "name" : "2012",
+      "value": "2012"
+    }, {
+      "name" : "2011",
+      "value": "2011"
+    }, {
+      "name" : "2010",
+      "value": "2010"
+    } ]
+  }, {
+    "key" : "letter",
+    "name" : "字母",
+    "init" : "",
+    "value" : [ {
+      "name" : "全部字母",
+      "value": ""
+    }, {
+      "name" : "A",
+      "value": "A"
+    }, {
+      "name" : "B",
+      "value": "B"
+    }, {
+      "name" : "C",
+      "value": "C"
+    }, {
+      "name" : "D",
+      "value": "D"
+    }, {
+      "name" : "E",
+      "value": "E"
+    }, {
+      "name" : "F",
+      "value": "F"
+    }, {
+      "name" : "G",
+      "value": "G"
+    }, {
+      "name" : "H",
+      "value": "H"
+    }, {
+      "name" : "I",
+      "value": "I"
+    }, {
+      "name" : "J",
+      "value": "J"
+    }, {
+      "name" : "K",
+      "value": "K"
+    }, {
+      "name" : "L",
+      "value": "L"
+    }, {
+      "name" : "M",
+      "value": "M"
+    }, {
+      "name" : "N",
+      "value": "N"
+    }, {
+      "name" : "O",
+      "value": "O"
+    }, {
+      "name" : "P",
+      "value": "P"
+    }, {
+      "name" : "Q",
+      "value": "Q"
+    }, {
+      "name" : "R",
+      "value": "R"
+    }, {
+      "name" : "S",
+      "value": "S"
+    }, {
+      "name" : "T",
+      "value": "T"
+    }, {
+      "name" : "U",
+      "value": "U"
+    }, {
+      "name" : "V",
+      "value": "V"
+    }, {
+      "name" : "W",
+      "value": "W"
+    }, {
+      "name" : "X",
+      "value": "X"
+    }, {
+      "name" : "Y",
+      "value": "Y"
+    }, {
+      "name" : "Z",
+      "value": "Z"
+    }, {
+      "name" : "0-9",
+      "value": "0-9"
+    } ]
+  }, {
+    "key" : "sort",
+    "name" : "排序",
+    "init" : "",
+    "value" : [ {
+      "name" : "默认排序",
+      "value": ""
+    }, {
+      "name" : "人气",
+      "value": "hits"
+    }, {
+      "name" : "评分",
+      "value": "score"
+    } ]
+  } ]
+}
+
+// ==================== 配置区域结束 ====================
+
+/**
+ * 移除 URL 末尾的斜杠
+ * @param {string} url - URL 字符串
+ * @returns {string} 处理后的 URL
+ */
+function removeTrailingSlash(url) {
+  if (!url) return "";
+  return url.replace(/\/+$/, "");
+}
+
+/**
+ * 判断是否为视频文件
+ * @param {Object} file - 文件对象
+ * @returns {boolean} 是否为视频文件
+ */
+function isVideoFile(file) {
+  if (!file || !file.file_name) {
+    return false;
+  }
+
+  const fileName = file.file_name.toLowerCase();
+  const videoExtensions = [".mp4", ".mkv", ".avi", ".flv", ".mov", ".wmv", ".m3u8", ".ts", ".webm", ".m4v"];
+
+  // 检查文件扩展名
+  for (const ext of videoExtensions) {
+    if (fileName.endsWith(ext)) {
+      return true;
+    }
+  }
+
+  // 检查format_type字段
+  if (file.format_type) {
+    const formatType = String(file.format_type).toLowerCase();
+    if (formatType.includes("video") || formatType.includes("mpeg") || formatType.includes("h264")) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * 递归获取所有视频文件
+ * @param {string} shareURL - 分享链接
+ * @param {Array} files - 文件列表
+ * @param {string} pdirFid - 父目录ID
+ * @returns {Promise<Array>} 所有视频文件列表
+ */
+async function getAllVideoFiles(shareURL, files, pdirFid) {
+  const videoFiles = [];
+
+  for (const file of files) {
+    if (file.file && isVideoFile(file)) {
+      // 是视频文件，直接添加
+      videoFiles.push(file);
+    } else if (file.dir) {
+      // 是目录，递归获取
+      try {
+        const subFileList = await OmniBox.getDriveFileList(shareURL, file.fid);
+        if (subFileList && subFileList.files && Array.isArray(subFileList.files)) {
+          const subVideoFiles = await getAllVideoFiles(shareURL, subFileList.files, file.fid);
+          videoFiles.push(...subVideoFiles);
+        }
+      } catch (error) {
+        OmniBox.log("warn", `获取子目录文件失败: ${error.message}`);
+        // 继续处理其他文件
+      }
+    }
+  }
+
+  return videoFiles;
+}
+
+/**
+ * 格式化文件大小，返回如 "1.65G" 的格式
+ * @param {number} size - 文件大小（字节）
+ * @returns {string} 格式化后的文件大小
+ */
+function formatFileSize(size) {
+  if (!size || size <= 0) {
+    return "";
+  }
+
+  const unit = 1024;
+  const units = ["B", "K", "M", "G", "T", "P"];
+
+  if (size < unit) {
+    return `${size}B`;
+  }
+
+  let exp = 0;
+  let sizeFloat = size;
+  while (sizeFloat >= unit && exp < units.length - 1) {
+    sizeFloat /= unit;
+    exp++;
+  }
+
+  // 保留两位小数，但如果是整数则显示整数
+  if (sizeFloat === Math.floor(sizeFloat)) {
+    return `${Math.floor(sizeFloat)}${units[exp]}`;
+  }
+  return `${sizeFloat.toFixed(2)}${units[exp]}`;
+}
+
+/**
+ * 获取首页数据
+ * @param {Object} params - 参数对象
+ * @returns {Object} 返回分类列表和推荐视频列表
+ */
+async function home(params) {
+  try {
+    OmniBox.log("info", "获取首页数据");
+
+    let classes = [];
+    let list = [];
+
+    try {
+      // 请求网站首页，从导航菜单中提取分类，同时提取首页影片列表
+      const homeUrl = removeTrailingSlash(WEB_SITE);
+      OmniBox.log("info", `请求首页URL: ${homeUrl}`);
+
+      const response = await OmniBox.request(homeUrl, {
+        method: "GET",
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        },
+      });
+
+      if (response.statusCode === 200 && response.body) {
+        // 解析 HTML
+        const $ = cheerio.load(response.body);
+
+        // 从导航菜单中提取分类
+        // 导航在 .module-tab-items 中，分类项是 .module-tab-item
+        const tabItems = $(".module-tab-items .module-tab-item");
+
+        tabItems.each((_, element) => {
+          const $item = $(element);
+          const typeId = $item.attr("data-id");
+          const typeName = $item.attr("data-name");
+
+          // 排除 data-id="0" 的"全部"项
+          if (typeId && typeId !== "0" && typeName) {
+            classes.push({
+              type_id: typeId,
+              type_name: typeName.trim(),
+            });
+            OmniBox.log("info", `提取分类: ${typeId} - ${typeName}`);
+          }
+        });
+
+        OmniBox.log("info", `从首页导航提取到 ${classes.length} 个分类`);
+
+        // 提取首页影片列表
+        // 找到第一个 class="module" 的元素
+        const firstModule = $(".module").first();
+
+        if (firstModule.length > 0) {
+          // 在这个 module 元素内找到所有 .module-item 元素
+          const moduleItems = firstModule.find(".module-item");
+
+          moduleItems.each((_, element) => {
+            const $item = $(element);
+
+            // 获取链接（从 .module-item-pic a 或 .module-item-title a）
+            const href = $item.find(".module-item-pic a").attr("href") || $item.find(".module-item-title").attr("href");
+
+            // 获取影片名称（优先从 img alt，其次从 .module-item-title title 或文本）
+            const vodName = $item.find(".module-item-pic img").attr("alt") || $item.find(".module-item-title").attr("title") || $item.find(".module-item-title").text().trim();
+
+            // 获取封面图片（优先 data-src，其次 src）
+            const vodPic = $item.find(".module-item-pic img").attr("data-src") || $item.find(".module-item-pic img").attr("src");
+
+            // 获取备注信息（更新状态）
+            const vodRemarks = $item.find(".module-item-text").text().trim();
+
+            // 获取年份（从 .module-item-caption 的第一个 span）
+            const vodYear = $item.find(".module-item-caption span").first().text().trim();
+
+            if (href && vodName) {
+              list.push({
+                vod_id: href,
+                vod_name: vodName,
+                vod_pic: vodPic || "",
+                type_id: "",
+                type_name: "",
+                vod_remarks: vodRemarks || "",
+                vod_year: vodYear || "",
+              });
+            }
+          });
+
+          OmniBox.log("info", `从首页提取到 ${list.length} 个影片`);
+        } else {
+          OmniBox.log("warn", "未找到 .module 元素");
+        }
+      } else {
+        OmniBox.log("warn", `首页请求失败或响应体为空: HTTP ${response.statusCode}`);
+      }
+    } catch (error) {
+      OmniBox.log("warn", `从首页提取数据失败: ${error.message}`);
+      if (error.stack) {
+        OmniBox.log("warn", `错误堆栈: ${error.stack}`);
+      }
+    }
+
+    return {
+      class: classes,
+      list: list,
+      filters: FILTERS,
+    };
+  } catch (error) {
+    OmniBox.log("error", `获取首页数据失败: ${error.message}`);
+  }
+}
+
+/**
+ * 获取分类数据
+ * @param {Object} params - 参数对象
+ *   - categoryId: 分类ID（必填）
+ *   - page: 页码（可选，默认1）
+ * @returns {Object} 返回视频列表
+ */
+async function category(params) {
+  try {
+    const categoryId = params.categoryId || params.type_id || "";
+    const page = parseInt(params.page || "1", 10);
+    const filters = params.filters || {};
+
+    OmniBox.log(params)
+
+    OmniBox.log("info", `获取分类数据: categoryId=${categoryId}, page=${page}`);
+
+    if (!categoryId) {
+      OmniBox.log("warn", "分类ID为空");
+      return {
+        list: [],
+        page: 1,
+        pagecount: 0,
+        total: 0,
+      };
+    }
+
+    // 构建请求 URL（UZ 格式：/index.php/vod/show/id/{categoryId}/page/{page}.html）
+    let url = removeTrailingSlash(WEB_SITE) + '/index.php/vod/show';
+    if (filters.area) {
+      url += `/area/${filters.area}`;
+    }
+    if (filters.sort) {
+      url += `/by/${filters.sort}`;
+    }
+    if (filters.class) {
+      url += `/class/${filters.class}`;
+    }
+    if (filters.lang) {
+      url += `/lang/${filters.lang}`;
+    }
+    if (filters.letter) {
+      url += `/letter/${filters.letter}`;
+    }
+    if (filters.year) {
+      url += `/year/${filters.year}`;
+    }
+    if (filters.tid) {
+      url += `/id/${filters.tid}.html`;
+    } else {
+      url += `/id/${categoryId}/page/${page}.html`;
+    }
+    OmniBox.log("info", `请求URL: ${url}`);
+
+    // 发送请求
+    const response = await OmniBox.request(url, {
+      method: "GET",
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      },
+    });
+
+    if (response.statusCode !== 200) {
+      OmniBox.log("error", `请求失败: HTTP ${response.statusCode}`);
+      return {
+        list: [],
+        page: page,
+        pagecount: 0,
+        total: 0,
+      };
+    }
+
+    if (!response.body) {
+      OmniBox.log("warn", "响应体为空");
+      return {
+        list: [],
+        page: page,
+        pagecount: 0,
+        total: 0,
+      };
+    }
+
+    // 解析 HTML
+    const $ = cheerio.load(response.body);
+    const videos = [];
+
+    const vodItems = $("#main .module-item");
+    vodItems.each((_, e) => {
+      const $item = $(e);
+      const href = $item.find(".module-item-pic a").attr("href");
+      const vodName = $item.find(".module-item-pic img").attr("alt");
+      const vodPic = $item.find(".module-item-pic img").attr("data-src");
+      const vodRemarks = $item.find(".module-item-text").text();
+      const vodYear = $item.find(".module-item-caption span").first().text();
+
+      if (href && vodName) {
+        videos.push({
+          vod_id: href,
+          vod_name: vodName,
+          vod_pic: vodPic || "",
+          type_id: categoryId,
+          type_name: "", // 分类名称可以从首页数据中获取
+          vod_remarks: vodRemarks || "",
+          vod_year: vodYear || "",
+        });
+      }
+    });
+
+    OmniBox.log("info", `解析完成，找到 ${videos.length} 个视频`);
+
+    // 注意：这里无法获取总页数和总数，返回默认值
+    return {
+      list: videos,
+      page: page,
+      pagecount: 0, // 无法确定总页数
+      total: videos.length,
+    };
+  } catch (error) {
+    OmniBox.log("error", `获取分类数据失败: ${error.message}`);
+    if (error.stack) {
+      OmniBox.log("error", `错误堆栈: ${error.stack}`);
+    }
+    return {
+      list: [],
+      page: params.page || 1,
+      pagecount: 0,
+      total: 0,
+    };
+  }
+}
+
+/**
+ * 获取视频详情
+ * @param {Object} params - 参数对象
+ *   - videoId: 视频ID（必填，即详情页的相对路径）
+ * @returns {Object} 返回视频详情
+ */
+async function detail(params) {
+  try {
+    const videoId = params.videoId || "";
+
+    if (!videoId) {
+      throw new Error("视频ID不能为空");
+    }
+
+    OmniBox.log("info", `获取视频详情: videoId=${videoId}`);
+
+    // 构建完整 URL
+    const webUrl = removeTrailingSlash(WEB_SITE) + videoId;
+
+    OmniBox.log("info", `请求URL: ${webUrl}`);
+
+    // 发送请求
+    const response = await OmniBox.request(webUrl, {
+      method: "GET",
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      },
+    });
+
+    if (response.statusCode !== 200) {
+      throw new Error(`请求失败: HTTP ${response.statusCode}`);
+    }
+
+    if (!response.body) {
+      throw new Error("响应体为空");
+    }
+
+    // 解析 HTML
+    const $ = cheerio.load(response.body);
+
+    // 获取基本信息
+    const vodName = $(".page-title")[0]?.children?.[0]?.data || "";
+    const vodPic = $($(".mobile-play")).find(".lazyload")[0]?.attribs?.["data-src"] || "";
+
+    // 获取详细信息
+    let vodYear = "";
+    let vodDirector = "";
+    let vodActor = "";
+    let vodContent = "";
+
+    const videoItems = $(".video-info-itemtitle");
+    for (const item of videoItems) {
+      const key = $(item).text();
+      const vItems = $(item).next().find("a");
+      const value = vItems
+        .map((i, el) => {
+          const text = $(el).text().trim();
+          return text ? text : null;
+        })
+        .get()
+        .filter(Boolean)
+        .join(", ");
+
+      if (key.includes("剧情")) {
+        vodContent = $(item).next().find("p").text().trim();
+      } else if (key.includes("导演")) {
+        vodDirector = value.trim();
+      } else if (key.includes("主演")) {
+        vodActor = value.trim();
+      }
+    }
+
+    // 获取网盘链接列表
+    const panUrls = [];
+    const items = $(".module-row-info");
+    for (const item of items) {
+      const shareUrl = $(item).find("p")[0]?.children?.[0]?.data;
+      if (shareUrl) {
+        panUrls.push(shareUrl.trim());
+      }
+    }
+
+    OmniBox.log("info", `解析完成，找到 ${panUrls.length} 个网盘链接`);
+
+    // 构建新格式的播放源（vod_play_sources）
+    const playSources = [];
+    const driveNames = []; // 用于统计重复名称
+
+    for (const shareURL of panUrls) {
+      try {
+        OmniBox.log("info", `处理网盘链接: ${shareURL}`);
+
+        // 获取网盘信息
+        const driveInfo = await OmniBox.getDriveInfoByShareURL(shareURL);
+        let displayName = driveInfo.displayName || "未知网盘";
+        driveNames.push(displayName);
+
+        OmniBox.log("info", `网盘类型: ${displayName}`);
+
+        // 获取文件列表
+        const fileList = await OmniBox.getDriveFileList(shareURL, "0");
+        if (!fileList || !fileList.files || !Array.isArray(fileList.files)) {
+          OmniBox.log("warn", `获取文件列表失败: ${shareURL}`);
+          continue;
+        }
+
+        OmniBox.log("info", `获取文件列表成功，文件数量: ${fileList.files.length}`);
+
+        // 递归获取所有视频文件
+        const allVideoFiles = await getAllVideoFiles(shareURL, fileList.files, "0");
+
+        if (allVideoFiles.length === 0) {
+          OmniBox.log("warn", `未找到视频文件: ${shareURL}`);
+          continue;
+        }
+
+        OmniBox.log("info", `递归获取视频文件完成，视频文件数量: ${allVideoFiles.length}`);
+
+        // 构建该网盘的剧集列表
+        const episodes = [];
+        for (const file of allVideoFiles) {
+          const fileName = file.file_name || "";
+          const fileId = file.fid || "";
+          const fileSize = file.size || file.file_size || 0;
+
+          if (!fileName || !fileId) {
+            continue;
+          }
+
+          // 格式化文件大小，在文件名前添加 [大小] 前缀
+          let displayFileName = fileName;
+          if (fileSize > 0) {
+            const fileSizeStr = formatFileSize(fileSize);
+            if (fileSizeStr) {
+              displayFileName = `[${fileSizeStr}] ${fileName}`;
+            }
+          }
+
+          // 构建剧集对象
+          const episode = {
+            name: displayFileName,
+            playId: `${shareURL}|${fileId}`, // 格式：分享链接|文件ID
+            size: fileSize > 0 ? fileSize : undefined,
+          };
+
+          episodes.push(episode);
+        }
+
+        if (episodes.length > 0) {
+          playSources.push({
+            name: displayName,
+            episodes: episodes,
+          });
+        }
+      } catch (error) {
+        OmniBox.log("error", `处理网盘链接失败: ${shareURL}, 错误: ${error.message}`);
+        if (error.stack) {
+          OmniBox.log("error", `错误堆栈: ${error.stack}`);
+        }
+        // 即使某个网盘处理失败，也继续处理其他网盘
+      }
+    }
+
+    // 处理重复的网盘名称，添加序号
+    // 先统计每个名称出现的总次数
+    const nameTotalCountMap = {};
+    for (const source of playSources) {
+      const name = source.name;
+      nameTotalCountMap[name] = (nameTotalCountMap[name] || 0) + 1;
+    }
+
+    // 为重复的名称添加序号
+    const nameCurrentCountMap = {}; // 记录每个名称当前已出现的次数
+    for (const source of playSources) {
+      const name = source.name;
+      const totalCount = nameTotalCountMap[name] || 0;
+
+      // 如果该名称只出现一次，不需要添加序号
+      if (totalCount > 1) {
+        nameCurrentCountMap[name] = (nameCurrentCountMap[name] || 0) + 1;
+        source.name = `${name}${nameCurrentCountMap[name]}`;
+      }
+    }
+
+    OmniBox.log("info", `构建播放源完成，网盘数量: ${playSources.length}`);
+
+    // 构建视频详情对象
+    const vodDetail = {
+      vod_id: videoId,
+      vod_name: vodName,
+      vod_pic: vodPic,
+      vod_year: vodYear,
+      vod_director: vodDirector,
+      vod_actor: vodActor,
+      vod_content: vodContent || `网盘资源，共${panUrls.length}个网盘链接`,
+      vod_play_sources: playSources.length > 0 ? playSources : undefined,
+      vod_remarks: "",
+    };
+
+    return {
+      list: [vodDetail],
+    };
+  } catch (error) {
+    OmniBox.log("error", `获取视频详情失败: ${error.message}`);
+    if (error.stack) {
+      OmniBox.log("error", `错误堆栈: ${error.stack}`);
+    }
+    return {
+      list: [],
+    };
+  }
+}
+
+/**
+ * 搜索视频
+ * @param {Object} params - 参数对象
+ *   - keyword: 搜索关键词（必填）
+ *   - page: 页码（可选，默认1）
+ * @returns {Object} 返回搜索结果
+ */
+async function search(params) {
+  try {
+    const keyword = params.keyword || "";
+    const page = parseInt(params.page || "1", 10);
+
+    OmniBox.log("info", `搜索视频: keyword=${keyword}, page=${page}`);
+
+    if (!keyword) {
+      OmniBox.log("warn", "搜索关键词为空");
+      return {
+        list: [],
+        page: 1,
+        pagecount: 0,
+        total: 0,
+      };
+    }
+
+    // 构建搜索 URL（UZ 格式：/index.php/vod/search/page/{page}/wd/{keyword}.html）
+    const searchUrl = `${removeTrailingSlash(WEB_SITE)}/index.php/vod/search/page/${page}/wd/${keyword}.html`;
+
+    OmniBox.log("info", `请求URL: ${searchUrl}`);
+
+    // 发送请求
+    const response = await OmniBox.request(searchUrl, {
+      method: "GET",
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      },
+    });
+
+    if (response.statusCode !== 200) {
+      OmniBox.log("error", `请求失败: HTTP ${response.statusCode}`);
+      return {
+        list: [],
+        page: page,
+        pagecount: 0,
+        total: 0,
+      };
+    }
+
+    if (!response.body) {
+      OmniBox.log("warn", "响应体为空");
+      return {
+        list: [],
+        page: page,
+        pagecount: 0,
+        total: 0,
+      };
+    }
+
+    // 解析 HTML
+    const $ = cheerio.load(response.body);
+    const videos = [];
+
+    const items = $(".module-search-item");
+    for (const item of items) {
+      const $item = $(item);
+      const videoSerial = $item.find(".video-serial")[0];
+      const vodPicImg = $item.find(".module-item-pic > img")[0];
+
+      if (videoSerial && videoSerial.attribs) {
+        const vodId = videoSerial.attribs.href || "";
+        const vodName = videoSerial.attribs.title || "";
+        const vodPic = vodPicImg?.attribs?.["data-src"] || "";
+        const vodRemarks = $($item.find(".video-serial")[0]).text() || "";
+
+        if (vodId && vodName) {
+          videos.push({
+            vod_id: vodId,
+            vod_name: vodName,
+            vod_pic: vodPic,
+            type_id: "",
+            type_name: "",
+            vod_remarks: vodRemarks,
+          });
+        }
+      }
+    }
+
+    OmniBox.log("info", `搜索完成，找到 ${videos.length} 个结果`);
+
+    return {
+      list: videos,
+      page: page,
+      pagecount: 0, // 无法确定总页数
+      total: videos.length,
+    };
+  } catch (error) {
+    OmniBox.log("error", `搜索视频失败: ${error.message}`);
+    if (error.stack) {
+      OmniBox.log("error", `错误堆栈: ${error.stack}`);
+    }
+    return {
+      list: [],
+      page: params.page || 1,
+      pagecount: 0,
+      total: 0,
+    };
+  }
+}
+
+/**
+ * 获取播放地址
+ * @param {Object} params - 参数对象
+ *   - flag: 播放源标识（可选，网盘名称）
+ *   - playId: 播放地址ID（必填，格式：分享链接|文件ID）
+ * @returns {Object} 返回播放地址信息
+ *
+ * 注意：playId 是从 detail 接口返回的 vod_play_url 中解析出来的
+ * 格式：文件名$分享链接|文件ID，playId 就是 "分享链接|文件ID" 部分
+ */
+async function play(params) {
+  try {
+    const flag = params.flag || "";
+    const playId = params.playId || "";
+
+    OmniBox.log("info", `获取播放地址: flag=${flag}, playId=${playId}`);
+
+    if (!playId) {
+      throw new Error("播放参数不能为空");
+    }
+
+    // 解析playId：格式为 分享链接|文件ID
+    const parts = playId.split("|");
+    if (parts.length < 2) {
+      throw new Error("播放参数格式错误，应为：分享链接|文件ID");
+    }
+    const shareURL = parts[0] || "";
+    const fileId = parts[1] || "";
+
+    if (!shareURL || !fileId) {
+      throw new Error("分享链接或文件ID不能为空");
+    }
+
+    OmniBox.log("info", `解析参数: shareURL=${shareURL}, fileId=${fileId}`);
+
+    // 获取刮削元数据，用于弹幕匹配（使用通用API）
+    let danmakuList = [];
+    try {
+      // 使用新的通用元数据API，shareURL作为resourceId（网盘场景下，分享链接就是资源唯一标识）
+      const metadata = await OmniBox.getScrapeMetadata(shareURL);
+      if (metadata && metadata.scrapeData && metadata.videoMappings) {
+        // 构建用于匹配映射关系的文件ID格式：{shareURL}|${fileId}
+        const formattedFileId = fileId ? `${shareURL}|${fileId}` : "";
+
+        // 根据文件ID查找对应的视频映射
+        let matchedMapping = null;
+        for (const mapping of metadata.videoMappings) {
+          // 使用格式化后的文件ID进行匹配（因为刮削SDK返回的fileId是 {shareURL}|${fileId} 格式）
+          if (mapping.fileId === formattedFileId) {
+            matchedMapping = mapping;
+            break;
+          }
+        }
+
+        if (matchedMapping && metadata.scrapeData) {
+          const scrapeData = metadata.scrapeData;
+          OmniBox.log("info", `找到文件映射，fileId: ${formattedFileId}, tmdbEpisodeId: ${matchedMapping.tmdbEpisodeId || "N/A"}`);
+
+          // 生成fileName用于弹幕匹配
+          let fileName = "";
+          const scrapeType = metadata.scrapeType || ""; // 从元数据获取类型（movie 或 tv）
+          if (scrapeType === "movie") {
+            // 电影直接用片名
+            fileName = scrapeData.title || "";
+          } else {
+            // 电视剧根据集数生成：{Title}.{SeasonAirYear}.S{SeasonNumber}E{EpisodeNumber}
+            const title = scrapeData.title || "";
+            const seasonAirYear = scrapeData.seasonAirYear || "";
+            const seasonNumber = matchedMapping.seasonNumber || 1;
+            const episodeNumber = matchedMapping.episodeNumber || 1;
+            fileName = `${title}.${seasonAirYear}.S${String(seasonNumber).padStart(2, "0")}E${String(episodeNumber).padStart(2, "0")}`;
+          }
+
+          if (fileName) {
+            OmniBox.log("info", `生成fileName用于弹幕匹配: ${fileName}`);
+            // 调用弹幕匹配API
+            danmakuList = await OmniBox.getDanmakuByFileName(fileName);
+            if (danmakuList && danmakuList.length > 0) {
+              OmniBox.log("info", `弹幕匹配成功，找到 ${danmakuList.length} 条弹幕`);
+            } else {
+              OmniBox.log("info", "弹幕匹配未找到结果");
+            }
+          }
+        } else {
+          OmniBox.log("info", `未找到文件映射，fileId: ${fileId}`);
+        }
+      } else {
+        OmniBox.log("info", "未找到刮削元数据，跳过弹幕匹配");
+      }
+    } catch (error) {
+      OmniBox.log("warn", `弹幕匹配失败: ${error.message}`);
+      // 弹幕匹配失败不影响播放，继续执行
+    }
+
+    // 使用SDK获取播放信息（自动获取stoken和fid_token，flag参数用于处理URL前缀）
+    // 对于夸克和UC网盘，如果flag是"服务端代理"或"本地代理"，后端会自动添加前缀
+    const playInfo = await OmniBox.getDriveVideoPlayInfo(shareURL, fileId, "服务端代理");
+
+    if (!playInfo || !playInfo.url || !Array.isArray(playInfo.url) || playInfo.url.length === 0) {
+      throw new Error("无法获取播放地址");
+    }
+
+    // 使用后端返回的url数组（格式：[{name: "RAW", url: "..."}, ...]）
+    // 对于夸克和UC网盘，如果flag是"服务端代理"或"本地代理"，URL已经包含前缀
+    const urlList = playInfo.url || [];
+
+    // 统一使用数组格式，每个元素包含 name 和 url，类似 danmaku 格式
+    // 直接使用后端返回的URL（已经根据flag处理过前缀）
+    let urlsResult = [];
+    for (const item of urlList) {
+      urlsResult.push({
+        name: item.name || "播放",
+        url: item.url,
+      });
+    }
+
+    let header = playInfo.header || {};
+
+    // 合并弹幕列表：优先使用匹配到的弹幕，如果没有则使用playInfo中的弹幕
+    let finalDanmakuList = danmakuList && danmakuList.length > 0 ? danmakuList : playInfo.danmaku || [];
+
+    return {
+      urls: urlsResult,
+      flag: shareURL, // 返回网盘分享链接作为flag
+      header: header,
+      parse: 0,
+      danmaku: finalDanmakuList,
+    };
+  } catch (error) {
+    OmniBox.log("error", `播放接口失败: ${error.message}`);
+    if (error.stack) {
+      OmniBox.log("error", `错误堆栈: ${error.stack}`);
+    }
+    return {
+      urls: [],
+      flag: params.flag || "",
+      header: {},
+      danmaku: [],
+    };
+  }
+}
+
+// 导出接口（用于模块化引用）
+module.exports = {
+  home,
+  category,
+  search,
+  detail,
+  play,
+};
+
+// 使用公共 runner 处理标准输入/输出
+// runner 通过 NODE_PATH 环境变量自动解析，无需手动指定路径
+const runner = require("spider_runner");
+runner.run(module.exports);
