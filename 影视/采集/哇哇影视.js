@@ -2,7 +2,7 @@
 // @author 
 // @description 刮削：支持，弹幕：支持，嗅探：支持
 // @dependencies: axios, crypto
-// @version 1.0.2
+// @version 1.0.3
 // @downloadURL https://gh-proxy.org/https://github.com/Silent1566/OmniBox-Spider/raw/refs/heads/main/影视/采集/哇哇影视.js
 
 const crypto = require('crypto');
@@ -214,20 +214,20 @@ async function sniffWawaPlay(playUrl) {
 // ========== 加密工具类 ==========
 const WawaCrypto = {
     // 生成 UUID (32位 Hex)
-    uuid: function() {
+    uuid: function () {
         const s = [];
         const hexDigits = "0123456789abcdef";
         for (let i = 0; i < 36; i++) {
             s[i] = hexDigits.substr(Math.floor(Math.random() * 0x10), 1);
         }
-        s[14] = "4"; 
+        s[14] = "4";
         s[19] = hexDigits.substr((s[19] & 0x3) | 0x8, 1);
         s[8] = s[13] = s[18] = s[23] = ""; // 移除连字符
         return s.join("");
     },
 
     // AES-128-ECB 解密
-    decrypt: function(encryptedData) {
+    decrypt: function (encryptedData) {
         try {
             const key = Buffer.from('Crm4FXWkk5JItpYirFDpqg==', 'base64');
             const hexStr = Buffer.from(encryptedData, 'base64').toString('utf8');
@@ -245,7 +245,7 @@ const WawaCrypto = {
     },
 
     // RSA-SHA256 签名
-    sign: function(message, privateKeyStr) {
+    sign: function (message, privateKeyStr) {
         try {
             let pemKey = privateKeyStr;
             if (!pemKey.includes('-----BEGIN PRIVATE KEY-----')) {
@@ -265,7 +265,7 @@ const WawaCrypto = {
     },
 
     // MD5
-    md5: function(str) {
+    md5: function (str) {
         return crypto.createHash('md5').update(str).digest('hex');
     }
 };
@@ -293,7 +293,7 @@ async function initConf() {
         };
 
         const res = await axios.get(url, { headers: headers, timeout: 5000 });
-        
+
         if (res.data && res.data.content) {
             const decryptedJson = WawaCrypto.decrypt(res.data.content);
             if (decryptedJson) {
@@ -316,7 +316,7 @@ async function initConf() {
 async function getWawaHeaders() {
     // 双重保障：确保配置已加载
     if (!globalConfig.HOST) await initConf();
-    
+
     const uid = WawaCrypto.uuid();
     const t = Date.now().toString();
     const signStr = `appKey=${globalConfig.APP_KEY}&time=${t}&uid=${uid}`;
@@ -352,7 +352,7 @@ async function fetch(url) {
  */
 async function home(params) {
     await initConf(); // 必须先初始化
-    
+
     // 并行请求分类和首页内容
     const [typeData, homeList] = await Promise.all([
         fetch(`${globalConfig.HOST}/api.php/zjv6.vod/types`),
@@ -367,13 +367,13 @@ async function home(params) {
     if (typeData && typeData.data && typeData.data.list) {
         typeData.data.list.forEach(item => {
             classes.push({
-                type_id: item.type_id,
+                type_id: item.type_id.toString(),
                 type_name: item.type_name
             });
 
             const tid = item.type_id.toString();
             filters[tid] = [];
-            
+
             if (!item.type_extend) item.type_extend = {};
             item.type_extend.by = '按更新,按播放,按评分,按收藏';
 
@@ -403,13 +403,20 @@ async function home(params) {
     let list = [];
     if (homeList && homeList.data && homeList.data.list && homeList.data.list[0]) {
         list = homeList.data.list[0].vod_list || [];
+        list = list.forEach(it => {
+            it.vod_id = it.vod_id.toString();
+        });
     }
 
-    return {
+    const r = {
         class: classes,
         filters: filters,
         list: list
     };
+
+    OmniBox.log("info", `首页响应：${JSON.stringify(r)}`)
+
+    return r;
 }
 
 /**
@@ -417,6 +424,8 @@ async function home(params) {
  */
 async function category(params) {
     await initConf(); // 修复点：必须先初始化，否则 globalConfig.HOST 为空
+
+    OmniBox.log("info", `分类入参：${JSON.stringify(params)}`)
 
     const tid = params.categoryId;
     const pg = params.page || 1;
@@ -426,21 +435,34 @@ async function category(params) {
     queryParams.append('type', tid);
     queryParams.append('page', pg);
     queryParams.append('limit', '12');
-    
+
     if (filterParams.class) queryParams.append('class', filterParams.class);
     if (filterParams.area) queryParams.append('area', filterParams.area);
     if (filterParams.year) queryParams.append('year', filterParams.year);
     if (filterParams.by) queryParams.append('by', filterParams.by);
 
     const url = `${globalConfig.HOST}/api.php/zjv6.vod?${queryParams.toString()}`;
-    const res = await fetch(url);
-    const list = (res && res.data && res.data.list) ? res.data.list : [];
 
-    return {
+    OmniBox.log("info", `分类查询：${url}`)
+
+    const res = await fetch(url);
+    const rawList = (res && res.data && res.data.list) ? res.data.list : [];
+    const list = rawList.map((it) => ({
+        vod_id: String(it.vod_id || ""),
+        vod_name: it.vod_name || "",
+        vod_pic: it.vod_pic || "",
+        vod_remarks: it.vod_remarks || ""
+    }));
+
+    const r = {
         list: list,
         page: pg,
         pagecount: list.length === 12 ? parseInt(pg) + 1 : parseInt(pg)
     };
+
+    OmniBox.log("info", `分类响应：${JSON.stringify(r)}`)
+
+    return r;
 }
 
 /**
@@ -459,7 +481,8 @@ async function search(params) {
     return {
         list: list,
         page: pg,
-        pagecount: list.length === 20 ? parseInt(pg) + 1 : parseInt(pg)
+        pagecount: list.length === 20 ? parseInt(pg) + 1 : parseInt(pg),
+        total: list.length
     };
 }
 
@@ -472,9 +495,9 @@ async function detail(params) {
     const id = params.videoId;
     const url = `${globalConfig.HOST}/api.php/zjv6.vod/detail?vod_id=${id}&rel_limit=10`;
     const res = await fetch(url);
-    
+
     if (!res || !res.data) return { list: [] };
-    
+
     const item = res.data;
     let vod_play_sources = [];
 
@@ -493,7 +516,7 @@ async function detail(params) {
                     v: item.vod_name || '',
                     e: u.name || '',
                 };
-                
+
                 const encodedId = encodeMeta(playObj);
 
                 episodes.push({
@@ -579,7 +602,7 @@ async function detail(params) {
 
     return {
         list: [{
-            vod_id: item.vod_id,
+            vod_id: item.vod_id.toString(),
             vod_name: scrapeData?.title || item.vod_name,
             vod_pic: scrapeData?.posterPath ? `https://image.tmdb.org/t/p/w500${scrapeData.posterPath}` : item.vod_pic,
             vod_remarks: item.vod_remarks,
@@ -599,7 +622,7 @@ async function detail(params) {
 async function play(params) {
     // 播放通常不需要请求 HOST，但也建议加上以防万一
     // await initConf(); 
-    
+
     const rawPlayId = params.playId;
     logInfo("[播放入口] 入参", {
         playId: rawPlayId,
@@ -608,7 +631,7 @@ async function play(params) {
     });
 
     const playId = rawPlayId;
-    
+
     try {
         const playData = decodeMeta(playId);
         logInfo("[播放解析] 透传解码", {
@@ -655,7 +678,7 @@ async function play(params) {
         } catch (e) {
             OmniBox.log('warn', `[哇哇影视] 读取刮削元数据失败: ${e.message}`);
         }
-        
+
         const playUrl = playData.url;
         const isDirectPlayable = playUrl && /\.(m3u8|mp4|flv|avi|mkv|ts)/i.test(playUrl);
         let playResponse;
