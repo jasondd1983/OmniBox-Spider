@@ -2,7 +2,7 @@
 # @name 人人电影
 # @author 梦
 # @description 影视站：https://www.rrdynb.com/ ，支持首页、分类、搜索、详情与网盘线路提取（Python版）
-# @version 1.2.0
+# @version 1.2.1
 # @downloadURL https://gh-proxy.org/https://github.com/Silent1566/OmniBox-Spider/raw/refs/heads/main/影视/网盘/人人电影.py
 
 import json
@@ -718,11 +718,11 @@ async def category(params, context):
         text = await request_text(url)
         cfg = CATEGORY_MAP[TYPEID_TO_KEY.get(category_id, "movie")]
         cards = extract_cards(text, cfg["type_id"], cfg["type_name"])
-        has_more = len(cards) >= 10
+        has_more = len(cards) > 0
         return {
             "page": page,
             "pagecount": page + 1 if has_more else page,
-            "total": page * len(cards) + (1 if has_more else 0),
+            "total": page * max(len(cards), 1) + (1 if has_more else 0),
             "list": cards,
         }
     except Exception as e:
